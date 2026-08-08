@@ -2860,11 +2860,14 @@
       }, 100);
     }
 
+    /* بطاقات المميزات — الاسم والسعر يأتيان من قاعدة البيانات (لوحة الإدارة)،
+       وهنا نحدّد الشكل فقط: أي صنف يظهر، وصفه القصير، ولونه.
+       أي صنف يُحذف أو يصبح غير متوفر من اللوحة تختفي بطاقته تلقائياً. */
     const FEAT = [
-      { id: 103, name: 'كص على التمن', tag: 'كص لحم عراقي على الرز', price: 13000, col: 'linear-gradient(135deg,#8C1A15,#5e100c)' },
-      { id: 101, name: 'تشريب كص', tag: 'مرق وخبز مبلّل', price: 12000, col: 'linear-gradient(135deg,#b23a30,#7d1611)' },
-      { id: 201, name: 'كبة مصلاوية دائرية', tag: 'كبة موصلية أصيلة', price: 8000, col: 'linear-gradient(135deg,#7d1611,#4d0d0a)' },
-      { id: 102, name: 'ماعون كص', tag: 'لحم عراقي وخضار', price: 12000, col: 'linear-gradient(135deg,#a12820,#6e120e)' }
+      { id: '103', tag: 'كص لحم عراقي على الرز', col: 'linear-gradient(135deg,#8C1A15,#5e100c)' },
+      { id: '101', tag: 'مرق وخبز مبلّل', col: 'linear-gradient(135deg,#b23a30,#7d1611)' },
+      { id: '201', tag: 'كبة موصلية أصيلة', col: 'linear-gradient(135deg,#7d1611,#4d0d0a)' },
+      { id: '102', tag: 'لحم عراقي وخضار', col: 'linear-gradient(135deg,#a12820,#6e120e)' }
     ];
 
     let cart = [];
@@ -2953,28 +2956,39 @@
           : '';
       }
 
-      // featured slider
-      document.getElementById('featS').innerHTML = FEAT.map((f, idx) => {
-        const it = getItem(f.id);
-        return `<div class="fc" style="background:${f.col}; padding: 18px 16px; display:flex; flex-direction:column; justify-content:space-between; height: 140px; min-width: 190px;" onclick="openModal('${f.id}')">
+      // featured slider — الأسعار والأسماء من قاعدة البيانات مباشرة
+      const featList = FEAT
+        .map(f => ({ f, it: getItem(f.id) }))
+        .filter(x => x.it && x.it.badge !== 'unavailable');
+
+      const featWrapEl = document.getElementById('featWrap');
+      if (featWrapEl) featWrapEl.style.display = featList.length ? 'block' : 'none';
+
+      document.getElementById('featS').innerHTML = featList.map(({ f, it }) =>
+        `<div class="fc" style="background:${f.col}; padding: 18px 16px; display:flex; flex-direction:column; justify-content:space-between; height: 140px; min-width: 190px;" onclick="openModal('${it.id}')">
           <div>
             <div class="fc-tag" style="font-size:10.5px; opacity:.85; text-transform:uppercase; margin-bottom: 4px;">${f.tag}</div>
-            <div class="fc-name" style="font-size:16px; font-weight:800; line-height:1.25;">${f.name}</div>
+            <div class="fc-name" style="font-size:16px; font-weight:800; line-height:1.25;">${it.name}</div>
           </div>
           <div class="fc-foot" style="margin-top:auto; display:flex; justify-content:flex-start; align-items:center;">
-            <span class="fc-price" style="font-size:13.5px; font-weight:700;">${f.price.toLocaleString()} د.ع</span>
+            <span class="fc-price" style="font-size:13.5px; font-weight:700;">${Number(it.price).toLocaleString()} د.ع</span>
           </div>
-        </div>`;
-      }).join('');
+        </div>`
+      ).join('');
 
       // dots
       document.getElementById('dots').innerHTML =
-        FEAT.map((_, i) => `<div class="dot${i === 0 ? ' on' : ''}" onclick="scrollFeat(${i})"></div>`).join('');
+        featList.map((_, i) => `<div class="dot${i === 0 ? ' on' : ''}" onclick="scrollFeat(${i})"></div>`).join('');
 
-      document.getElementById('featS').addEventListener('scroll', function () {
-        const i = Math.round(this.scrollLeft / 200);
-        document.querySelectorAll('.dot').forEach((d, j) => d.classList.toggle('on', j === i));
-      });
+      // مستمع واحد فقط — populate() تُستدعى مع كل تحديث للبيانات
+      const featS = document.getElementById('featS');
+      if (!featS.dataset.scrollBound) {
+        featS.dataset.scrollBound = '1';
+        featS.addEventListener('scroll', function () {
+          const i = Math.round(this.scrollLeft / 200);
+          document.querySelectorAll('.dot').forEach((d, j) => d.classList.toggle('on', j === i));
+        });
+      }
 
       initImgLazy();
     }
