@@ -2885,11 +2885,20 @@
         const local = (typeof initialData !== 'undefined' && initialData.items)
           ? initialData.items.find(x => String(x.id) === String(it.id) || String(x.name).trim() === String(it.name).trim())
           : null;
+        // img الفارغ مع hasImg=true يعني أن المدير رفع صورة جديدة في
+        // oris_menu/images/<id>. لا تستبدلها بالصورة المحلية الافتراضية.
+        const usesCloudImage = it.hasImg === true && !String(it.img || '').trim();
         const merged = { ...(local || {}), ...it };
+        merged._usesCloudImage = usesCloudImage;
         if (!merged.desc && local) merged.desc = local.desc;
         if ((!merged.img || String(merged.img).startsWith('assets/menu/')) && local) merged.img = local.img;
         if (!merged.badge && local && local.badge) merged.badge = local.badge;
-        if (merged.img && String(merged.img).trim() !== '') IMG_CACHE.set(String(merged.id), merged.img);
+        if (usesCloudImage) {
+          // امسح النسخة السابقة كي يجلب المتصفح الصورة المحفوظة حديثاً.
+          IMG_CACHE.delete(String(merged.id));
+        } else if (merged.img && String(merged.img).trim() !== '') {
+          IMG_CACHE.set(String(merged.id), merged.img);
+        }
         if (DB[merged.cat]) DB[merged.cat].push(merged);
       });
 
@@ -3042,7 +3051,7 @@
       document.getElementById('featS').innerHTML = featList.map(({ f, it }) => {
         const image = IMG_CACHE.get(String(it.id)) || it.img || '';
         return `<div class="fc" style="display:flex; flex-direction:column; justify-content:space-between;" onclick="openModal('${it.id}')">
-          ${image ? `<img class="fc-bg" src="${esc(image)}" alt="" loading="lazy">` : ''}
+          ${image ? `<img class="fc-bg" data-feature-img-id="${it.id}" src="${esc(image)}" alt="" loading="lazy">` : ''}
           <span class="fc-shade" aria-hidden="true"></span>
           <div>
             <div class="fc-tag" style="font-size:10.5px; opacity:.85; text-transform:uppercase; margin-bottom: 4px;">${f.tag}</div>
@@ -3053,6 +3062,15 @@
           </div>
         </div>`;
       }).join('');
+
+      // بطاقات المميزات تستخدم الصورة المرفوعة حديثاً أيضاً، إن وُجدت.
+      featList.forEach(({ it }) => {
+        if (!it || !it._usesCloudImage) return;
+        getItemImage(it.id).then(url => {
+          if (!url) return;
+          document.querySelectorAll(`[data-feature-img-id="${String(it.id)}"]`).forEach(img => { img.src = url; });
+        });
+      });
 
       // dots
       document.getElementById('dots').innerHTML =
