@@ -2849,6 +2849,7 @@
       }
 
       // أبقِ قسم سيت منيو الجديد ظاهراً مباشرةً، حتى قبل أول مزامنة للسحابة.
+      const hasCloudSetMenuCategory = CATS.some(c => c.id === 'setmenu');
       const localSetCategory = (typeof initialData !== 'undefined' && initialData.categories)
         ? initialData.categories.find(c => c.id === 'setmenu')
         : null;
@@ -2871,7 +2872,7 @@
 
       const items = finalData.items ? (Array.isArray(finalData.items) ? finalData.items : Object.values(finalData.items)) : [];
       const mergedItems = items.slice();
-      if (typeof initialData !== 'undefined' && initialData.items) {
+      if (!hasCloudSetMenuCategory && typeof initialData !== 'undefined' && initialData.items) {
         initialData.items.filter(it => it.cat === 'setmenu').forEach(local => {
           const alreadyAdded = mergedItems.some(it => it && (
             String(it.id) === String(local.id) || String(it.name).trim() === String(local.name).trim()

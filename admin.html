@@ -434,10 +434,10 @@
                                 <i class="ph-bold ph-image" style="font-size:26px; color:var(--sub);"></i>
                             </div>
                             <div style="flex:1;">
-                                <label for="mealImgFile" class="btn btn-sync" style="display:inline-flex; cursor:pointer; padding:10px 16px;">
+                                <label class="btn btn-sync" style="display:inline-flex; cursor:pointer; padding:10px 16px; position:relative; overflow:hidden;">
                                     <i class="ph-bold ph-upload-simple"></i> ارفع صورة من جهازك
+                                    <input type="file" id="mealImgFile" accept="image/*" onchange="uploadImage(this)" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;">
                                 </label>
-                                <input type="file" id="mealImgFile" accept="image/*" style="display:none;" onchange="uploadImage(this)">
                                 <div id="uploadStatus" style="font-size:12px; color:var(--sub); margin-top:8px;"></div>
                             </div>
                         </div>
@@ -560,6 +560,28 @@
         }
 
         let CATS = [];
+        let HAS_CLOUD_SETMENU = false;
+
+        // يضيف قسم سيت منيو ووجبتيه مرة واحدة فقط. بعد إنشائه في السحابة
+        // تبقى كل عمليات التعديل والحذف بيد المدير ولا نعيد إنشاء المحذوف.
+        async function ensureBundledSetMenu() {
+            if(typeof initialData === 'undefined' || !initialData.categories || !initialData.items) return;
+            const category = initialData.categories.find(cat => cat.id === 'setmenu');
+            const setItems = initialData.items.filter(item => item.cat === 'setmenu');
+            if(!category || setItems.length === 0) return;
+
+            try {
+                const categorySnap = await db.child('categories').child(category.id).once('value');
+                if(categorySnap.exists()) return;
+
+                const updates = {};
+                updates['categories/' + category.id] = category;
+                setItems.forEach(item => { updates['items/' + item.id] = item; });
+                await db.update(updates);
+            } catch(err) {
+                console.warn('تعذّرت مزامنة سيت منيو:', err);
+            }
+        }
 
         function addCategory() {
             const name = document.getElementById('newCatName').value.trim();
@@ -619,6 +641,7 @@
                 return;
             }
             db = firebase.database().ref('oris_menu');
+            ensureBundledSetMenu();
             
             // ترتيب الأقسام المفضّل (نفس ترتيب الموقع)
             const CAT_ORDER = ['kass', 'kubba', 'plates', 'sides', 'drinks'];
@@ -636,6 +659,7 @@
                 } else {
                     CATS = [];
                 }
+                HAS_CLOUD_SETMENU = CATS.some(cat => cat.id === 'setmenu');
                 const localSetCategory = (typeof initialData !== 'undefined' && initialData.categories)
                     ? initialData.categories.find(cat => cat.id === 'setmenu')
                     : null;
@@ -733,8 +757,10 @@
             const boxes = document.querySelectorAll('[data-img-id]:not([data-img-done])');
             const fill = box => {
                 const id = box.getAttribute('data-img-id');
+                const fallbackUrl = box.getAttribute('data-fallback-img') || '';
                 box.setAttribute('data-img-done', '1');
                 getItemImage(id).then(url => {
+                    url = url || fallbackUrl;
                     if (!url) return;
                     box.innerHTML = `<img style="width:100%; height:100%; object-fit:cover;">`;
                     box.firstElementChild.src = url;
@@ -769,7 +795,7 @@
             container.innerHTML = '';
 
             const items = (Array.isArray(data.items) ? data.items : Object.values(data.items)).slice();
-            if(typeof initialData !== 'undefined' && initialData.items) {
+            if(!HAS_CLOUD_SETMENU && typeof initialData !== 'undefined' && initialData.items) {
                 initialData.items.filter(it => it.cat === 'setmenu').forEach(local => {
                     const alreadyAdded = items.some(it => it && (
                         String(it.id) === String(local.id) || String(it.name).trim() === String(local.name).trim()
@@ -797,9 +823,16 @@
                             String(local.id) === String(it.id) ||
                             String(local.name).trim() === String(it.name).trim())
                         : null;
-                    const displayImage = (it.img && String(it.img).trim() !== '')
-                        ? String(it.img).trim()
-                        : (fallbackItem && fallbackItem.img ? String(fallbackItem.img).trim() : '');
+                    const inlineImage = (it.img && String(it.img).trim() !== '') ? String(it.img).trim() : '';
+                    // روابط الصور الأساسية القديمة في Firebase كانت تشير إلى JPG غير موجود.
+                    // نستبدل أي مسار assets/menu بالمسار WebP الصحيح من البيانات المحلية.
+                    // أمّا img الفارغ مع hasImg=true فيعني صورة مرفوعة داخل مجلد images.
+                    const displayImage = (fallbackItem && inlineImage.startsWith('assets/menu/'))
+                        ? String(fallbackItem.img || '').trim()
+                        : inlineImage;
+                    const fallbackImage = fallbackItem && fallbackItem.img
+                        ? String(fallbackItem.img).trim()
+                        : '';
                     const displayDesc = (it.desc && String(it.desc).trim() !== '')
                         ? String(it.desc).trim()
                         : (fallbackItem && fallbackItem.desc ? String(fallbackItem.desc).trim() : '');
@@ -816,8 +849,9 @@
                     }
 
                     // الصورة تُجلب من مسارها المنفصل عند ظهور البطاقة
-                    const hasImg = Boolean(displayImage) || it.hasImg === true;
-                    const imgHtml = `<div style="width:56px; height:56px; border-radius:12px; overflow:hidden; background:var(--bg); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;"${hasImg ? ` data-img-id="${it.id}"` : ''}>
+                    const hasImg = Boolean(displayImage) || Boolean(fallbackImage) || it.hasImg === true;
+                    const fallbackAttr = !displayImage && fallbackImage ? ` data-fallback-img="${fallbackImage}"` : '';
+                    const imgHtml = `<div style="width:56px; height:56px; border-radius:12px; overflow:hidden; background:var(--bg); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;"${hasImg ? ` data-img-id="${it.id}"${fallbackAttr}` : ''}>
                         <i class="ph-bold ph-fork-knife" style="color:var(--sub); font-size:20px;"></i>
                     </div>`;
 
@@ -866,36 +900,48 @@
 
         function editItem(id) {
             db.child('items').child(id).get().then(snap => {
-                const it = snap.val();
+                const fallbackItem = (typeof initialData !== 'undefined' && initialData.items)
+                    ? initialData.items.find(local => String(local.id) === String(id))
+                    : null;
+                const it = snap.val() || fallbackItem;
                 if(it) {
                     openModal('edit');
                     document.getElementById('modalTitle').innerText = 'تعديل الوجبة: ' + it.name;
                     document.getElementById('mealId').value = it.id;
                     document.getElementById('mealCat').value = it.cat;
                     document.getElementById('mealName').value = it.name;
-                    const fallbackItem = (typeof initialData !== 'undefined' && initialData.items)
-                        ? initialData.items.find(local => String(local.id) === String(it.id) || String(local.name).trim() === String(it.name).trim())
-                        : null;
-                    document.getElementById('mealDesc').value = it.desc || (fallbackItem ? fallbackItem.desc : '') || '';
+                    const matchedFallback = fallbackItem || ((typeof initialData !== 'undefined' && initialData.items)
+                        ? initialData.items.find(local => String(local.name).trim() === String(it.name).trim())
+                        : null);
+                    document.getElementById('mealDesc').value = it.desc || (matchedFallback ? matchedFallback.desc : '') || '';
                     document.getElementById('mealPrice').value = it.price;
                     document.getElementById('mealBadge').value = it.badge || '';
 
                     // الصورة محفوظة في مسار منفصل — نجلبها عند فتح التعديل فقط
-                    document.getElementById('mealImg').value = it.img || '';
+                    const inlineImage = String(it.img || '').trim();
+                    const bundledImage = matchedFallback && inlineImage.startsWith('assets/menu/')
+                        ? String(matchedFallback.img || '').trim()
+                        : inlineImage;
+                    document.getElementById('mealImg').value = bundledImage;
                     refreshPreview();
-                    if (it.hasImg && !(it.img || '').trim()) {
+                    if (it.hasImg && !bundledImage) {
                         document.getElementById('uploadStatus').style.color = 'var(--sub)';
                         document.getElementById('uploadStatus').innerText = 'جاري تحميل الصورة الحالية...';
                         getItemImage(it.id).then(url => {
                             // تأكد أن المستخدم ما زال يعدّل نفس الصنف ولم يرفع صورة جديدة
                             if (document.getElementById('mealId').value !== String(it.id)) return;
                             if (document.getElementById('mealImg').value.trim() !== '') return;
-                            document.getElementById('mealImg').value = url || '';
+                            document.getElementById('mealImg').value = url || (matchedFallback ? matchedFallback.img : '') || '';
                             document.getElementById('uploadStatus').innerText = '';
                             refreshPreview();
                         });
                     }
+                } else {
+                    alert('تعذّر العثور على بيانات هذه الوجبة. أعد تحميل الصفحة وحاول مجدداً.');
                 }
+            }).catch(err => {
+                console.error(err);
+                alert('تعذّر فتح الوجبة للتعديل — تحقق من الاتصال.');
             });
         }
 
@@ -908,6 +954,9 @@
                 db.update(updates).then(() => {
                     ADMIN_IMG_CACHE.delete(String(id));
                     alert('تم الحذف بنجاح');
+                }).catch(err => {
+                    console.error(err);
+                    alert('تعذّر الحذف — تحقق من الاتصال وحاول مجدداً.');
                 });
             }
         }
@@ -941,7 +990,7 @@
             updates['images/' + id] = isEmbedded ? imgVal : null;
 
             db.update(updates).then(() => {
-                ADMIN_IMG_CACHE.set(String(id), isEmbedded ? imgVal : '');
+                ADMIN_IMG_CACHE.set(String(id), imgVal);
                 btn.disabled = false;
                 btn.innerHTML = originalText;
                 closeModal();
