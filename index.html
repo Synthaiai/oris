@@ -2570,6 +2570,8 @@
     .fc-tag { font-size:11px !important; letter-spacing:.2px; }
     .fc-price { display:inline-flex; padding:7px 11px; border-radius:12px; background:rgba(255,255,255,.16); backdrop-filter:blur(8px); }
     .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .viewport { flex:none; align-items:flex-start; overflow-y:hidden; overscroll-behavior-x:contain; transition:height .28s ease; }
+    .sec { width:100%; min-width:100%; max-width:100%; align-self:flex-start; padding-bottom:34px; scroll-snap-stop:always; }
     .ic { min-width:0; min-height:252px; padding:0; gap:0; flex-direction:column-reverse; align-items:stretch; justify-content:flex-end; border:1px solid rgba(111,135,75,.1); border-radius:24px 24px 16px 16px; background:#fff; box-shadow:0 10px 28px rgba(49,67,31,.07); }
     .ic:hover { transform:translateY(-4px); border-color:rgba(111,135,75,.32); box-shadow:0 18px 36px rgba(49,67,31,.12); }
     .ic-img-wrap { width:100%; height:150px; margin:0; }
@@ -2846,6 +2848,14 @@
         CATS = initialData.categories;
       }
 
+      // أبقِ قسم سيت منيو الجديد ظاهراً مباشرةً، حتى قبل أول مزامنة للسحابة.
+      const localSetCategory = (typeof initialData !== 'undefined' && initialData.categories)
+        ? initialData.categories.find(c => c.id === 'setmenu')
+        : null;
+      if (localSetCategory && !CATS.some(c => c.id === localSetCategory.id)) {
+        CATS.push(localSetCategory);
+      }
+
       // ترتيب الأقسام: حسب حقل order إن وُجد، وإلا حسب الترتيب المفضّل، وإلا في الآخر
       const CAT_ORDER = ['kass', 'kubba', 'plates', 'sides', 'drinks'];
       const catRank = c => {
@@ -2860,7 +2870,16 @@
       CATS.forEach(c => DB[c.id] = []);
 
       const items = finalData.items ? (Array.isArray(finalData.items) ? finalData.items : Object.values(finalData.items)) : [];
-      items.forEach(it => {
+      const mergedItems = items.slice();
+      if (typeof initialData !== 'undefined' && initialData.items) {
+        initialData.items.filter(it => it.cat === 'setmenu').forEach(local => {
+          const alreadyAdded = mergedItems.some(it => it && (
+            String(it.id) === String(local.id) || String(it.name).trim() === String(local.name).trim()
+          ));
+          if (!alreadyAdded) mergedItems.push(local);
+        });
+      }
+      mergedItems.forEach(it => {
         if (!it) return;
         const local = (typeof initialData !== 'undefined' && initialData.items)
           ? initialData.items.find(x => String(x.id) === String(it.id) || String(x.name).trim() === String(it.name).trim())
@@ -2908,6 +2927,8 @@
       // Re-observe sections for tab switching
       setTimeout(() => {
         document.querySelectorAll('.sec').forEach(s => secObs.observe(s));
+        observeSectionSizes();
+        syncViewportHeight(activeSectionId, true);
       }, 100);
     }
 
@@ -3047,6 +3068,7 @@
       }
 
       initImgLazy();
+      syncViewportHeight(activeSectionId);
     }
 
     function scrollFeat(i) {
@@ -3069,8 +3091,39 @@
 
     /* ── TABS ── */
     let tScroll = false;
+    let activeSectionId = 'home';
+
+    function syncViewportHeight(id, immediate = false) {
+      const vp = document.getElementById('mainVp');
+      const sec = document.getElementById(id) || document.getElementById('home');
+      if (!vp || !sec) return;
+      requestAnimationFrame(() => {
+        const height = Math.ceil(sec.scrollHeight);
+        if (height > 0) {
+          if (immediate) vp.style.transition = 'none';
+          vp.style.height = height + 'px';
+          if (immediate) requestAnimationFrame(() => vp.style.transition = 'height .28s ease');
+        }
+      });
+    }
+
+    const sectionSizeObserver = ('ResizeObserver' in window)
+      ? new ResizeObserver(entries => {
+          if (entries.some(entry => entry.target.id === activeSectionId)) {
+            syncViewportHeight(activeSectionId);
+          }
+        })
+      : null;
+
+    function observeSectionSizes() {
+      if (!sectionSizeObserver) return;
+      sectionSizeObserver.disconnect();
+      document.querySelectorAll('.sec').forEach(sec => sectionSizeObserver.observe(sec));
+    }
+
     function goTab(id, btn) {
       tScroll = true;
+      activeSectionId = id;
       const sec = document.getElementById(id);
       const vp = document.getElementById('mainVp');
 
@@ -3079,13 +3132,16 @@
       btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
       vp.scrollTo({ left: sec.offsetLeft, behavior: 'smooth' });
-      setTimeout(() => tScroll = false, 800);
+      syncViewportHeight(id);
+      setTimeout(() => { tScroll = false; syncViewportHeight(id); }, 800);
     }
 
     const secObs = new IntersectionObserver((entries) => {
       if (tScroll) return;
       entries.forEach(e => {
         if (e.isIntersecting && e.intersectionRatio > 0.5) {
+          activeSectionId = e.target.id;
+          syncViewportHeight(activeSectionId);
           const idx = Array.from(document.querySelectorAll('.sec')).indexOf(e.target);
           const tabs = document.querySelectorAll('.tb');
           if (tabs[idx]) {
@@ -3099,7 +3155,11 @@
 
     setTimeout(() => {
       document.querySelectorAll('.sec').forEach(s => secObs.observe(s));
+      observeSectionSizes();
+      syncViewportHeight(activeSectionId, true);
     }, 500);
+
+    window.addEventListener('resize', () => syncViewportHeight(activeSectionId, true));
 
     function doSearch(v) {
       v = v.trim();

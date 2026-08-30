@@ -636,6 +636,13 @@
                 } else {
                     CATS = [];
                 }
+                const localSetCategory = (typeof initialData !== 'undefined' && initialData.categories)
+                    ? initialData.categories.find(cat => cat.id === 'setmenu')
+                    : null;
+                if(localSetCategory && !CATS.some(cat => cat.id === localSetCategory.id)) {
+                    CATS.push(localSetCategory);
+                    CATS.sort((a, b) => catRank(a) - catRank(b));
+                }
                 updateCatDropdown();
                 if(document.getElementById('catModalOverlay').style.display === 'flex') {
                     renderCatList();
@@ -761,7 +768,15 @@
             const container = document.getElementById('mainListing');
             container.innerHTML = '';
 
-            const items = Array.isArray(data.items) ? data.items : Object.values(data.items);
+            const items = (Array.isArray(data.items) ? data.items : Object.values(data.items)).slice();
+            if(typeof initialData !== 'undefined' && initialData.items) {
+                initialData.items.filter(it => it.cat === 'setmenu').forEach(local => {
+                    const alreadyAdded = items.some(it => it && (
+                        String(it.id) === String(local.id) || String(it.name).trim() === String(local.name).trim()
+                    ));
+                    if(!alreadyAdded) items.push(local);
+                });
+            }
             
             CATS.forEach(cat => {
                 const catItems = items.filter(i => i && i.cat === cat.id);
