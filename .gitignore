@@ -3,3 +3,7 @@ Thumbs.db
 .vscode/
 node_modules/
 .wrangler/
+tmp/
+assets/menu/*.jpg
+assets/menu/*.jpeg
+assets/menu/*.png

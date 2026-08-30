@@ -1,9 +1,9 @@
 {
-  "name": "مطعم كص وكبة الحدباء",
-  "short_name": "كص وكبة",
-  "description": "مطعم كص وكبة الحدباء",
+  "name": "ORIS Coffee House",
+  "short_name": "ORIS",
+  "description": "منيو أورس كوفي هاوس",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#F4E2D6",
-  "theme_color": "#8C1A15"
+  "background_color": "#eadbcb",
+  "theme_color": "#6f874b"
 }

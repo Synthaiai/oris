@@ -6,26 +6,27 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>إدارة كص وكبة الحدباء — Admin Portal</title>
+    <title>إدارة ORIS Coffee House</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/light/style.css">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="assets/vendor/firebase-app-compat.js"></script>
+    <script src="assets/vendor/firebase-database-compat.js"></script>
+    <script src="assets/vendor/firebase-auth-compat.js"></script>
     <style>
         :root {
-            --red: #8C1A15;
-            --red-light: #F4E2D6;
-            --bg: #F4E2D6;
-            --white: #fffaf4;
-            --ink: #8C1A15;
-            --sub: #9c6255;
-            --border: #e3cdbf;
-            --accent: #8C1A15;
+            --red: #6f874b;
+            --red-light: #eadbcb;
+            --bg: #eadbcb;
+            --white: #ffffff;
+            --ink: #40562a;
+            --sub: #806047;
+            --border: #caab8f;
+            --accent: #6f874b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,7 +35,7 @@
                 radial-gradient(circle at 15% 0%, rgba(140, 26, 21, 0.06), transparent 40%),
                 radial-gradient(circle at 85% 100%, rgba(140, 26, 21, 0.06), transparent 40%),
                 var(--bg);
-            font-family: 'Tajawal', sans-serif;
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
             color: var(--ink);
             min-height: 100vh;
             padding-bottom: 50px;
@@ -340,7 +341,7 @@
 
     <header class="hdr">
         <div class="logo">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#8C1A15,#5e100c); color:#fff; font-weight:800; font-size:11px; vertical-align:middle; margin-left:8px;">الحدباء</span> كص وكبة الحدباء — الإدارة
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#6f874b; color:#fff; font-weight:800; font-size:11px; vertical-align:middle; margin-left:8px;">ORIS</span> أورس كوفي هاوس — الإدارة
         </div>
         <div class="hdr-actions">
             <button class="btn btn-sync" style="background:#f0fdf4; color:#16a34a; padding:8px 15px;" onclick="openCatModal()">
@@ -398,16 +399,16 @@
                         <label>القسم</label>
                         <select id="mealCat" required>
                             <option value="">اختر القسم...</option>
-                            <option value="kass">الكص</option>
-                            <option value="kubba">الكبة</option>
-                            <option value="plates">الأطباق</option>
-                            <option value="sides">المقبلات</option>
-                            <option value="drinks">المشروبات</option>
+                            <option value="hot">القهوة الساخنة</option>
+                            <option value="cold">القهوة الباردة</option>
+                            <option value="special">مشروبات أورس</option>
+                            <option value="brew">القهوة المختصة</option>
+                            <option value="dessert">الحلويات</option>
                         </select>
                     </div>
                     <div class="field">
                         <label>اسم الوجبة</label>
-                        <input type="text" id="mealName" required placeholder="مثلاً: كص لحم فرنسي">
+                        <input type="text" id="mealName" required placeholder="مثلاً: سبانيش لاتيه">
                     </div>
                     <div class="field">
                         <label>سعر الوجبة (د.ع)</label>
@@ -482,7 +483,7 @@
         /* ── Firebase Authentication ──
            تسجيل الدخول عبر حساب المدير في Firebase (آمن).
            الإيميل ثابت، وكلمة السر مخزّنة ومشفّرة داخل Firebase — غير موجودة بالكود. */
-        const ADMIN_EMAIL = 'admin@kashadbaa.com';
+        const ADMIN_EMAIL = 'nobweb2@gmail.com';
         let initialized = false;
 
         async function checkPass() {
@@ -539,7 +540,7 @@
                 alert("برجاء الانتظار حتى يتم تحميل ملف الاعدادات");
                 return;
             }
-            const testRef = firebase.database().ref('kass_menu/connection_test');
+            const testRef = firebase.database().ref('oris_menu/connection_test');
             const testData = { timestamp: Date.now(), status: "working" };
             
             alert("بدء فحص الاتصال... يرجى الانتظار ثواني.");
@@ -617,7 +618,7 @@
                 document.getElementById('statusTxt').innerText = "خطأ في الاتصال!";
                 return;
             }
-            db = firebase.database().ref('kass_menu');
+            db = firebase.database().ref('oris_menu');
             
             // ترتيب الأقسام المفضّل (نفس ترتيب الموقع)
             const CAT_ORDER = ['kass', 'kubba', 'plates', 'sides', 'drinks'];
@@ -666,7 +667,7 @@
         /* ═══════════════════════════════════════════════════════════
            فصل الصور عن بيانات المنيو
            ───────────────────────────────────────────────────────────
-           الصور تُخزَّن في kass_menu/images/<id> بدل أن تكون داخل الصنف.
+           الصور تُخزَّن في oris_menu/images/<id> بدل أن تكون داخل الصنف.
            السبب: مجموع الصور كان يتجاوز 1.2 ميغابايت، فيُحمَّل كاملاً مع
            كل فتح للموقع. على نت الرصيد (زين/آسياسيل) لا يكتمل التنزيل،
            فيبقى الزبون يرى القائمة القديمة. بعد الفصل صار طلب المنيو
@@ -773,6 +774,23 @@
                 `;
 
                 catItems.forEach(it => {
+                    // الأصناف الأساسية تحمل مسار صورة محلياً داخل it.img.
+                    // خزّن هذا المسار قبل تشغيل التحميل الكسول، ثم استخدم
+                    // oris_menu/images فقط للصور التي يرفعها المدير لاحقاً.
+                    const fallbackItem = (typeof initialData !== 'undefined' && initialData.items)
+                        ? initialData.items.find(local =>
+                            String(local.id) === String(it.id) ||
+                            String(local.name).trim() === String(it.name).trim())
+                        : null;
+                    const displayImage = (it.img && String(it.img).trim() !== '')
+                        ? String(it.img).trim()
+                        : (fallbackItem && fallbackItem.img ? String(fallbackItem.img).trim() : '');
+                    const displayDesc = (it.desc && String(it.desc).trim() !== '')
+                        ? String(it.desc).trim()
+                        : (fallbackItem && fallbackItem.desc ? String(fallbackItem.desc).trim() : '');
+                    if (displayImage) {
+                        ADMIN_IMG_CACHE.set(String(it.id), displayImage);
+                    }
                     let badgeHtml = '';
                     if (it.badge === 'unavailable') {
                         badgeHtml = `<span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:#f1f3f5; color:#495057; border: 1px solid #dee2e6; margin-right: 8px;">غير متوفر</span>`;
@@ -783,7 +801,7 @@
                     }
 
                     // الصورة تُجلب من مسارها المنفصل عند ظهور البطاقة
-                    const hasImg = it.hasImg === true || (it.img && it.img.trim() !== '');
+                    const hasImg = Boolean(displayImage) || it.hasImg === true;
                     const imgHtml = `<div style="width:56px; height:56px; border-radius:12px; overflow:hidden; background:var(--bg); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;"${hasImg ? ` data-img-id="${it.id}"` : ''}>
                         <i class="ph-bold ph-fork-knife" style="color:var(--sub); font-size:20px;"></i>
                     </div>`;
@@ -796,7 +814,7 @@
                                     <div class="item-name" style="margin-bottom:0;">${it.name}</div>
                                     ${badgeHtml}
                                 </div>
-                                <div style="font-size:12px; color:var(--sub); margin-top:2px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;">${it.desc || 'لا يوجد وصف'}</div>
+                                <div style="font-size:12px; color:var(--sub); margin-top:2px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;">${displayDesc || 'لا يوجد وصف'}</div>
                                 <div class="item-price" style="margin-top:2px;">${it.price.toLocaleString()} د.ع</div>
                             </div>
                             <div class="item-actions">
@@ -840,7 +858,10 @@
                     document.getElementById('mealId').value = it.id;
                     document.getElementById('mealCat').value = it.cat;
                     document.getElementById('mealName').value = it.name;
-                    document.getElementById('mealDesc').value = it.desc || '';
+                    const fallbackItem = (typeof initialData !== 'undefined' && initialData.items)
+                        ? initialData.items.find(local => String(local.id) === String(it.id) || String(local.name).trim() === String(it.name).trim())
+                        : null;
+                    document.getElementById('mealDesc').value = it.desc || (fallbackItem ? fallbackItem.desc : '') || '';
                     document.getElementById('mealPrice').value = it.price;
                     document.getElementById('mealBadge').value = it.badge || '';
 
